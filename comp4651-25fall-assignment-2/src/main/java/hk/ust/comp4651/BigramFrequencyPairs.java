@@ -49,10 +49,26 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 				throws IOException, InterruptedException {
 			String line = ((Text) value).toString();
 			String[] words = line.trim().split("\\s+");
-			
-			/*
-			 * TODO: Your implementation goes here.
-			 */
+		    if (words.length < 2) {
+		        return;
+		    }
+
+		    for (int i = 0; i < words.length - 1; i++) {
+		        String left = words[i];
+		        String right = words[i + 1];
+
+		        if (left.isEmpty() || right.isEmpty()) {
+		            continue;
+		        }
+
+		        // emit the bigram (a, b)
+		        BIGRAM.set(left, right);
+		        context.write(BIGRAM, ONE);
+
+		        // emit the marginal (a, *)
+		        BIGRAM.set(left, "*");
+		        context.write(BIGRAM, ONE);
+		    }
 		}
 	}
 
@@ -64,6 +80,8 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 
 		// Reuse objects.
 		private final static FloatWritable VALUE = new FloatWritable();
+		private String currentLeft = null;
+		private float marginal = 0.0f;
 
 		@Override
 		public void reduce(PairOfStrings key, Iterable<IntWritable> values,
@@ -71,9 +89,29 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
-		}
-	}
-	
+		    int sum = 0;
+		    for (IntWritable v : values) {
+		        sum += v.get();
+		    }
+		    // If right element is "*", we know its the marginal count
+		    if (key.getRightElement().equals("*")) {
+		        // update the marginal for this left word
+		        currentLeft = key.getLeftElement();
+		        marginal = sum;
+		        // output total count line: A \t <total>
+		        VALUE.set(marginal);
+		        context.write(new PairOfStrings(currentLeft, ""), VALUE);
+		    }
+		    else if (key.getLeftElement().equals(currentLeft) && marginal > 0) {
+		              float relFreq = (float) sum / marginal;
+
+		              // output relative frequency line: A \t B \t <freq>
+		              VALUE.set(relFreq);
+		              context.write(key, VALUE);
+		          }
+		      }
+		  }
+
 	private static class MyCombiner extends
 			Reducer<PairOfStrings, IntWritable, PairOfStrings, IntWritable> {
 		private static final IntWritable SUM = new IntWritable();
@@ -84,6 +122,12 @@ public class BigramFrequencyPairs extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			   int sum = 0;
+		        for (IntWritable v : values) {
+		            sum += v.get();
+		        }
+		        SUM.set(sum);
+		        context.write(key, SUM);
 		}
 	}
 

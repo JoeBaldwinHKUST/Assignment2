@@ -54,6 +54,26 @@ public class BigramFrequencyStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here.
 			 */
+			if (words.length < 2){
+				return;
+			}
+		    HashMapStringIntWritable stripe = new HashMapStringIntWritable();
+
+		    for (int i = 0; i < words.length - 1; i++) {
+		        String left = words[i];
+		        String right = words[i + 1];
+
+		        if (left.isEmpty() || right.isEmpty()) {
+		            continue;
+		        }
+
+		        // clear the stripe and add one entry
+		        stripe.clear();
+		        stripe.put(right, 1);
+
+		        // emit (left, {right:1})
+		        context.write(new Text(left), stripe);
+		    }
 		}
 	}
 
@@ -75,8 +95,33 @@ public class BigramFrequencyStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here
 			 */
+			 SUM_STRIPES.clear();
+			 for (HashMapStringIntWritable stripe : stripes) {
+			        for (String right : stripe.keySet()) {
+			            int count = stripe.get(right);
+			            if (SUM_STRIPES.containsKey(right)) {
+			                SUM_STRIPES.put(right, SUM_STRIPES.get(right) + count);
+			            } else {
+			                SUM_STRIPES.put(right, count);
+			            }
+			        }
+			    }
+			  int total = 0;
+			    for (String right : SUM_STRIPES.keySet()) {
+			        total += SUM_STRIPES.get(right);
+			    }
+			    FREQ.set(total);
+			    BIGRAM.set(key.toString(), "");
+			    context.write(BIGRAM, FREQ);
+			    for (String right : SUM_STRIPES.keySet()) {
+			        float relFreq = (float) SUM_STRIPES.get(right) / total;
+			        FREQ.set(relFreq);
+			        BIGRAM.set(key.toString(), right);
+			        context.write(BIGRAM, FREQ);
+			    }
+			}
 		}
-	}
+	
 
 	/*
 	 * TODO: Write your combiner to aggregate all stripes with the same key
@@ -94,6 +139,23 @@ public class BigramFrequencyStripes extends Configured implements Tool {
 			/*
 			 * TODO: Your implementation goes here
 			 */
+
+		    // clear reusable map for this key
+		    SUM_STRIPES.clear();
+		    for (HashMapStringIntWritable stripe : stripes) {
+		        for (String right : stripe.keySet()) {
+		            int count = stripe.get(right);
+		            if (SUM_STRIPES.containsKey(right)) {
+		                SUM_STRIPES.put(right, SUM_STRIPES.get(right) + count);
+		            } else {
+		                SUM_STRIPES.put(right, count);
+		            }
+		        }
+		    }
+		
+
+		    // emit the merged stripe for this key
+		    context.write(key, SUM_STRIPES);
 		}
 	}
 
