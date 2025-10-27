@@ -133,90 +133,68 @@ public class Part_3 {
     }
 
     /** Recursively delete all empty files (length == 0) under 'root'. */
-public static void delEmptyFilesRecursive(Path root) throws IOException {
-    FileSystem fs = fs();
-
-    // Enforce sandbox: /user/<user>/hw2/
-    String user = System.getProperty("HADOOP_USER_NAME");
-    if (user == null || user.isEmpty()) user = System.getProperty("user.name", "cloudera");
-    String sandboxPrefix = "/user/" + user + "/hw2/";
-    if (!root.toString().startsWith(sandboxPrefix)) {
-        throw new IllegalArgumentException("Path must be under " + sandboxPrefix + " (got " + root + ")");
-    }
-
-    // Check if the root path exists
-    if (!fs.exists(root)) {
-        return;
-    }
-
-    // Get all files/directories under the current path
-    FileStatus[] statuses = fs.listStatus(root);
-
-    for (FileStatus status : statuses) {
-        Path currentPath = status.getPath();
-
-        // Ensure we're only operating within the safe sandbox
-        ensureUnder(fs, root, currentPath);
-        if (!currentPath.toString().startsWith(sandboxPrefix)) {
-            throw new IllegalArgumentException("Path must be under " + sandboxPrefix + " (got " + currentPath + ")");
+    public static void delEmptyFilesRecursive(Path root) throws IOException {
+        FileSystem fs = fs();
+       
+        // Check if the root path exists
+        if (!fs.exists(root)) {
+            return;
         }
-
-        if (status.isDirectory()) {
-            // Recursively process subdirectories
-            delEmptyFilesRecursive(currentPath);
-        } else {
-            // Check if file is empty and delete if so
-            if (status.getLen() == 0) {
-                fs.delete(currentPath, false); // false = not recursive (it's a file)
+       
+        // Get all files/directories under the current path
+        FileStatus[] statuses = fs.listStatus(root);
+       
+        for (FileStatus status : statuses) {
+            Path currentPath = status.getPath();
+           
+            // Ensure we're only operating within the safe sandbox
+            ensureUnder(fs, root, currentPath);
+           
+            if (status.isDirectory()) {
+                // Recursively process subdirectories
+                delEmptyFilesRecursive(currentPath);
+            } else {
+                // Check if file is empty and delete if so
+                if (status.getLen() == 0) {
+                    fs.delete(currentPath, false); // false = not recursive (it's a file)
+                }
             }
         }
     }
-}
-
-/**
- * Recursively delete ALL files whose names end with 'suffix' under 'root'.
- * Exact suffix match, case-sensitive. Example: ".tmp" matches "a.tmp" but NOT "a.tmp.bak".
- */
-public static void delBySuffixRecursive(Path root, String suffix) throws IOException {
-    FileSystem fs = fs();
-
-    // Enforce sandbox: /user/<user>/hw2/
-    String user = System.getProperty("HADOOP_USER_NAME");
-    if (user == null || user.isEmpty()) user = System.getProperty("user.name", "cloudera");
-    String sandboxPrefix = "/user/" + user + "/hw2/";
-    if (!root.toString().startsWith(sandboxPrefix)) {
-        throw new IllegalArgumentException("Path must be under " + sandboxPrefix + " (got " + root + ")");
-    }
-
-    // Check if the root path exists
-    if (!fs.exists(root)) {
-        return;
-    }
-
-    // Get all files/directories under the current path
-    FileStatus[] statuses = fs.listStatus(root);
-
-    for (FileStatus status : statuses) {
-        Path currentPath = status.getPath();
-
-        // Ensure we're only operating within the safe sandbox
-        ensureUnder(fs, root, currentPath);
-        if (!currentPath.toString().startsWith(sandboxPrefix)) {
-            throw new IllegalArgumentException("Path must be under " + sandboxPrefix + " (got " + currentPath + ")");
+    
+    /**
+     * Recursively delete ALL files whose names end with 'suffix' under 'root'.
+     * Exact suffix match, case-sensitive. Example: ".tmp" matches "a.tmp" but NOT "a.tmp.bak".
+     */
+    public static void delBySuffixRecursive(Path root, String suffix) throws IOException {
+        FileSystem fs = fs();
+       
+        // Check if the root path exists
+        if (!fs.exists(root)) {
+            return;
         }
-
-        if (status.isDirectory()) {
-            // Recursively process subdirectories
-            delBySuffixRecursive(currentPath, suffix);
-        } else {
-            // Check if file name ends with the specified suffix
-            String fileName = currentPath.getName();
-            if (fileName.endsWith(suffix)) {
-                fs.delete(currentPath, false); // false = not recursive (it's a file)
+       
+        // Get all files/directories under the current path
+        FileStatus[] statuses = fs.listStatus(root);
+       
+        for (FileStatus status : statuses) {
+            Path currentPath = status.getPath();
+           
+            // Ensure we're only operating within the safe sandbox
+            ensureUnder(fs, root, currentPath);
+           
+            if (status.isDirectory()) {
+                // Recursively process subdirectories
+                delBySuffixRecursive(currentPath, suffix);
+            } else {
+                // Check if file name ends with the specified suffix
+                String fileName = currentPath.getName();
+                if (fileName.endsWith(suffix)) {
+                    fs.delete(currentPath, false); // false = not recursive (it's a file)
+                }
             }
         }
     }
-}
 
     /**
      * Main flow (Do NOT modify):
